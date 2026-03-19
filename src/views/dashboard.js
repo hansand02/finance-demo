@@ -1,7 +1,9 @@
-import { companies, revEUR, fmt } from '../data.js'
+import { companies, revEUR, fmt, toNOK, fmtNOK } from '../data.js'
 import { exportExcel, exportPDF } from '../exports.js'
 
 const sorted = [...companies].sort((a, b) => revEUR(b) - revEUR(a))
+
+let currencyMode = 'reported' // 'reported' or 'nok'
 
 function bar(label, value, max, display, isJotun) {
   const pct = Math.max(5, (value / max) * 100).toFixed(0)
@@ -13,6 +15,64 @@ function bar(label, value, max, display, isJotun) {
   </div>`
 }
 
+function fmtField(field, company) {
+  if (currencyMode === 'nok') {
+    if (!field || field.value === null) return '—'
+    const nokVal = toNOK(field.value, company)
+    return fmtNOK(nokVal)
+  }
+  return fmt(field, company.currency)
+}
+
+function renderTable() {
+  const isNOK = currencyMode === 'nok'
+  return `
+    <div class="card">
+      <div class="card-header">
+        <h2>Financial Comparison</h2>
+        <div class="header-actions" style="gap:8px">
+          <div class="toggle-group">
+            <button class="toggle-btn ${!isNOK ? 'active' : ''}" data-mode="reported">Rapportert valuta</button>
+            <button class="toggle-btn ${isNOK ? 'active' : ''}" data-mode="nok">Alt i NOK</button>
+          </div>
+          <span class="card-badge">Click "Data & Sources" to verify</span>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th><th>HQ</th>
+              <th>Revenue${isNOK ? ' (NOK)' : ''}</th>
+              <th>EBITDA${isNOK ? ' (NOK)' : ''}</th>
+              <th>EBITDA %</th>
+              <th>EBITDA YoY</th>
+              <th>Op. Income${isNOK ? ' (NOK)' : ''}</th>
+              <th>Op. %</th>
+              <th>Net Debt${isNOK ? ' (NOK)' : ''}</th>
+              <th>Rev YoY</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sorted.map(c => `<tr class="${c.company === 'Jotun' ? 'row-jotun' : ''}">
+              <td><strong>${c.company}</strong>${c.private ? ' <span class="tag-private">Private</span>' : ''}</td>
+              <td>${c.hq}</td>
+              <td>${fmtField(c.revenue, c)}</td>
+              <td>${fmtField(c.ebitda, c)}</td>
+              <td>${c.ebitdaMargin.value ? c.ebitdaMargin.value + '%' : '—'}</td>
+              <td class="${c.ebitdaYoY > 0 ? 'pos' : c.ebitdaYoY < 0 ? 'neg' : ''}">${c.ebitdaYoY !== null ? (c.ebitdaYoY > 0 ? '+' : '') + c.ebitdaYoY + '%' : '—'}</td>
+              <td>${fmtField(c.opIncome, c)}</td>
+              <td>${c.opMargin.value ? c.opMargin.value + '%' : '—'}</td>
+              <td>${fmtField(c.netDebt, c)}</td>
+              <td class="${c.revenueYoY > 0 ? 'pos' : c.revenueYoY < 0 ? 'neg' : ''}">${c.revenueYoY > 0 ? '+' : ''}${c.revenueYoY}%</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${isNOK ? '<p class="note" style="padding:12px 24px">Omregnet til NOK med gjennomsnittlige FY2025-kurser. USD/NOK ~11.63, EUR/NOK ~12.78, JPY/NOK ~0.071</p>' : ''}
+    </div>`
+}
+
 export function render() {
   const maxRev = revEUR(sorted[0]) * 1.1
   const marginData = companies
@@ -20,6 +80,13 @@ export function render() {
     .map(c => ({ label: c.company, value: c.ebitdaMargin.value || c.opMargin.value, display: c.ebitdaMargin.value ? `${c.ebitdaMargin.value}%` : `${c.opMargin.value}% op.`, isJotun: c.company === 'Jotun' }))
     .sort((a, b) => b.value - a.value)
   const maxMargin = marginData[0].value * 1.2
+
+  // EBITDA growth chart data
+  const ebitdaGrowthData = companies
+    .filter(c => c.ebitdaYoY !== null)
+    .map(c => ({ label: c.company, value: c.ebitdaYoY, isJotun: c.company === 'Jotun' }))
+    .sort((a, b) => b.value - a.value)
+  const maxEbitdaG = Math.max(...ebitdaGrowthData.map(d => Math.abs(d.value))) * 1.3
 
   return `
     <div class="view-header">
@@ -62,34 +129,8 @@ export function render() {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h2>Financial Comparison</h2>
-        <span class="card-badge">All data sourced — click "Data & Sources" to verify</span>
-      </div>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Company</th><th>HQ</th><th>Revenue</th><th>EBITDA</th><th>EBITDA %</th>
-              <th>Op. Income</th><th>Op. %</th><th>Net Debt</th><th>Rev YoY</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sorted.map(c => `<tr class="${c.company === 'Jotun' ? 'row-jotun' : ''}">
-              <td><strong>${c.company}</strong>${c.private ? ' <span class="tag-private">Private</span>' : ''}</td>
-              <td>${c.hq}</td>
-              <td>${fmt(c.revenue, c.currency)}</td>
-              <td>${fmt(c.ebitda, c.currency)}</td>
-              <td>${c.ebitdaMargin.value ? c.ebitdaMargin.value + '%' : '—'}</td>
-              <td>${fmt(c.opIncome, c.currency)}</td>
-              <td>${c.opMargin.value ? c.opMargin.value + '%' : '—'}</td>
-              <td>${fmt(c.netDebt, c.currency)}</td>
-              <td class="${c.revenueYoY > 0 ? 'pos' : c.revenueYoY < 0 ? 'neg' : ''}">${c.revenueYoY > 0 ? '+' : ''}${c.revenueYoY}%</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+    <div id="table-container">
+      ${renderTable()}
     </div>
 
     <div class="grid-2">
@@ -108,6 +149,22 @@ export function render() {
     </div>
 
     <div class="card">
+      <div class="card-header"><h2>EBITDA Growth YoY</h2></div>
+      <div class="card-body">
+        ${ebitdaGrowthData.map(d => {
+          const color = d.value > 0 ? 'var(--green)' : 'var(--red)'
+          const pct = Math.max(5, (Math.abs(d.value) / maxEbitdaG) * 100).toFixed(0)
+          return `<div class="bar-row">
+            <span class="bar-label">${d.label}</span>
+            <div class="bar-track">
+              <div class="bar-fill ${d.isJotun ? 'jotun' : 'comp'}" style="width:${pct}%;background:${color}">${d.value > 0 ? '+' : ''}${d.value}%</div>
+            </div>
+          </div>`
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-header"><h2>Strategic Insights</h2></div>
       <div class="insight-grid">
         <div class="insight-card threat">
@@ -118,7 +175,7 @@ export function render() {
         <div class="insight-card threat">
           <span class="tag">THREAT</span>
           <h4>Nippon Paint M&A</h4>
-          <p>Revenue +8.3% via AOC acquisition. APAC = 43% of global market. Jotun's decorative position under pressure.</p>
+          <p>Revenue +8.3% via AOC acquisition. EBITDA +37.8%. APAC = 43% of global market. Jotun's decorative position under pressure.</p>
         </div>
         <div class="insight-card strength">
           <span class="tag">STRENGTH</span>
@@ -148,4 +205,33 @@ export function render() {
 export function init() {
   window.__exportExcel = exportExcel
   window.__exportPDF = exportPDF
+
+  // Currency toggle
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currencyMode = btn.dataset.mode
+      const container = document.getElementById('table-container')
+      if (container) container.innerHTML = renderTable()
+      // Re-bind toggle buttons
+      document.querySelectorAll('.toggle-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          currencyMode = b.dataset.mode
+          const c2 = document.getElementById('table-container')
+          if (c2) c2.innerHTML = renderTable()
+          initToggles()
+        })
+      })
+    })
+  })
+}
+
+function initToggles() {
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currencyMode = btn.dataset.mode
+      const container = document.getElementById('table-container')
+      if (container) container.innerHTML = renderTable()
+      initToggles()
+    })
+  })
 }

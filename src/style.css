@@ -204,6 +204,38 @@ body {
   cursor: not-allowed;
 }
 
+/* Toggle Group */
+.toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggle-btn:first-child { border-right: 1px solid var(--border); }
+
+.toggle-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
 /* ─── Cards ─── */
 .card {
   background: var(--card);

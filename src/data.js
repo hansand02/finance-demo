@@ -18,7 +18,9 @@ export const companies = [
     netDebt: { value: null, source: null, note: 'Low leverage (private)' },
     employees: { value: 10200, source: 'https://www.jotun.com/ww-en/about-jotun/who-we-are/financial-and-annual-reports', note: 'Annual report 2024' },
     revenueYoY: 2.0, volumeGrowth: 7.0,
+    ebitdaYoY: null, // private, not reported
     eurRate: 0.086, // NOK to EUR
+    nokRate: 1.0, // already NOK
     ticker: null, private: true,
   },
   {
@@ -34,7 +36,9 @@ export const companies = [
     netDebt: { value: 9.5, unit: 'B', source: 'https://www.prnewswire.com/news-releases/the-sherwin-williams-company-reports-2025-year-end-and-fourth-quarter-financial-results-302673909.html', note: 'Approximate' },
     employees: { value: 63890, source: 'https://www.prnewswire.com/news-releases/the-sherwin-williams-company-reports-2025-year-end-and-fourth-quarter-financial-results-302673909.html' },
     revenueYoY: 2.1,
+    ebitdaYoY: 4.6, // adj. EBITDA growth YoY from earnings release
     eurRate: 0.91,
+    nokRate: 11.63, // USD to NOK (approx FY2025 avg)
     ticker: 'SHW', private: false, marketCap: 77.3,
   },
   {
@@ -50,7 +54,9 @@ export const companies = [
     netDebt: { value: 5.7, unit: 'B', source: 'https://investor.ppg.com/news/news-details/2026/PPG-reports-fourth-quarter-and-full-year-2025-financial-results/default.aspx', note: 'As of Q2 2025' },
     employees: { value: 50000, source: 'https://investor.ppg.com/news/news-details/2026/PPG-reports-fourth-quarter-and-full-year-2025-financial-results/default.aspx' },
     revenueYoY: 0.2,
+    ebitdaYoY: -9.1, // EBITDA declined ~9% YoY (MacroTrends TTM)
     eurRate: 0.91,
+    nokRate: 11.63,
     ticker: 'PPG', private: false, marketCap: 27.5,
   },
   {
@@ -66,7 +72,9 @@ export const companies = [
     netDebt: { value: null, source: null, note: 'Leverage ~2.8x net debt/EBITDA' },
     employees: { value: 34000, source: 'https://www.akzonobel.com/en/media/media-releases/q4-2025' },
     revenueYoY: -5.0,
+    ebitdaYoY: -2.3, // adj. EBITDA €1.44B vs €1.478B prior year
     eurRate: 1.0,
+    nokRate: 11.63 / 0.91, // EUR to NOK (~12.78)
     ticker: 'AKZOY', private: false, marketCap: 12.5,
   },
   {
@@ -82,7 +90,9 @@ export const companies = [
     netDebt: { value: 7.8, unit: 'B', source: 'https://www.nipponpaint-holdings.com/en/ir/results/recent/', note: 'In USD' },
     employees: { value: 33000, source: 'https://www.nipponpaint-holdings.com/en/ir/results/recent/' },
     revenueYoY: 8.3,
+    ebitdaYoY: 37.8, // adj. OP up 37.8% YoY (Nippon Paint FY2025)
     eurRate: 0.0061,
+    nokRate: 0.071, // JPY to NOK (approx)
     ticker: 'NPCPF', private: false, marketCap: 23.0,
   },
   {
@@ -98,7 +108,9 @@ export const companies = [
     netDebt: { value: null, source: null, note: 'Private' },
     employees: { value: 7500, source: 'https://www.hempel.com/about-us/media-and-news/news/2026/annual-report-2025' },
     revenueYoY: 3.4,
+    ebitdaYoY: null, // not disclosed year-over-year
     eurRate: 1.0,
+    nokRate: 11.63 / 0.91, // EUR to NOK (~12.78)
     ticker: null, private: true,
   },
 ]
@@ -109,11 +121,25 @@ export function revEUR(c) {
   return c.revenue.value * c.eurRate
 }
 
+// Helper: convert a value to NOK billions
+export function toNOK(value, company) {
+  if (!value) return null
+  return value * company.nokRate
+}
+
 // Helper: format a sourced value for display
 export function fmt(field, currency) {
   if (!field || field.value === null) return '—'
   const sym = { USD: '$', EUR: '€', JPY: '¥', NOK: 'NOK ', INR: '₹' }[currency] || ''
   return `${sym}${field.value}${field.unit || ''}`
+}
+
+// Helper: format value in NOK
+export function fmtNOK(value) {
+  if (value === null || value === undefined) return '—'
+  if (Math.abs(value) >= 1000) return `NOK ${(value / 1).toFixed(0)}B`
+  if (Math.abs(value) >= 1) return `NOK ${value.toFixed(1)}B`
+  return `NOK ${(value * 1000).toFixed(0)}M`
 }
 
 // Fetch live profile data from FMP API
