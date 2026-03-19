@@ -90,7 +90,7 @@ export const companies = [
     netDebt: { value: 7.8, unit: 'B', source: 'https://www.nipponpaint-holdings.com/en/ir/results/recent/', note: 'In USD' },
     employees: { value: 33000, source: 'https://www.nipponpaint-holdings.com/en/ir/results/recent/' },
     revenueYoY: 8.3,
-    ebitdaYoY: 37.8, // adj. OP up 37.8% YoY (Nippon Paint FY2025)
+    ebitdaYoY: 31.0, // regular operating profit +31% YoY (not adjusted)
     eurRate: 0.0061,
     nokRate: 0.071, // JPY to NOK (approx)
     ticker: 'NPCPF', private: false, marketCap: 23.0,

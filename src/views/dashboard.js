@@ -24,6 +24,68 @@ function fmtField(field, company) {
   return fmt(field, company.currency)
 }
 
+function renderRevChart() {
+  const isNOK = currencyMode === 'nok'
+  if (isNOK) {
+    const nokData = sorted.map(c => ({ label: c.company, value: toNOK(c.revenue.value, c), isJotun: c.company === 'Jotun' }))
+    const maxNOK = Math.max(...nokData.map(d => d.value)) * 1.1
+    return `
+      <div class="card">
+        <div class="card-header"><h2>Revenue (NOK B)</h2></div>
+        <div class="card-body">
+          ${nokData.map(d => bar(d.label, d.value, maxNOK, fmtNOK(d.value), d.isJotun)).join('')}
+        </div>
+      </div>`
+  }
+  const maxRev = revEUR(sorted[0]) * 1.1
+  return `
+    <div class="card">
+      <div class="card-header"><h2>Revenue (€B)</h2></div>
+      <div class="card-body">
+        ${sorted.map(c => bar(c.company, revEUR(c), maxRev, fmt(c.revenue, c.currency), c.company === 'Jotun')).join('')}
+      </div>
+    </div>`
+}
+
+function renderEbitdaChart() {
+  const isNOK = currencyMode === 'nok'
+  if (isNOK) {
+    const nokData = companies
+      .filter(c => c.ebitda.value)
+      .map(c => ({ label: c.company, value: toNOK(c.ebitda.value, c), isJotun: c.company === 'Jotun' }))
+      .sort((a, b) => b.value - a.value)
+    const maxNOK = Math.max(...nokData.map(d => d.value)) * 1.1
+    return `
+      <div class="card">
+        <div class="card-header"><h2>EBITDA (NOK B)</h2></div>
+        <div class="card-body">
+          ${nokData.map(d => bar(d.label, d.value, maxNOK, fmtNOK(d.value), d.isJotun)).join('')}
+        </div>
+      </div>`
+  }
+  const marginData = companies
+    .filter(c => c.ebitdaMargin.value || c.opMargin.value)
+    .map(c => ({ label: c.company, value: c.ebitdaMargin.value || c.opMargin.value, display: c.ebitdaMargin.value ? `${c.ebitdaMargin.value}%` : `${c.opMargin.value}% op.`, isJotun: c.company === 'Jotun' }))
+    .sort((a, b) => b.value - a.value)
+  const maxMargin = marginData[0].value * 1.2
+  return `
+    <div class="card">
+      <div class="card-header"><h2>EBITDA / Op. Margin</h2></div>
+      <div class="card-body">
+        ${marginData.map(d => bar(d.label, d.value, maxMargin, d.display, d.isJotun)).join('')}
+      </div>
+    </div>`
+}
+
+function renderReactiveSection() {
+  return `
+    ${renderTable()}
+    <div class="grid-2">
+      ${renderRevChart()}
+      ${renderEbitdaChart()}
+    </div>`
+}
+
 function renderTable() {
   const isNOK = currencyMode === 'nok'
   return `
@@ -129,27 +191,12 @@ export function render() {
       </div>
     </div>
 
-    <div id="table-container">
-      ${renderTable()}
-    </div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-header"><h2>Revenue (€B)</h2></div>
-        <div class="card-body">
-          ${sorted.map(c => bar(c.company, revEUR(c), maxRev, fmt(c.revenue, c.currency), c.company === 'Jotun')).join('')}
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><h2>EBITDA / Op. Margin</h2></div>
-        <div class="card-body">
-          ${marginData.map(d => bar(d.label, d.value, maxMargin, d.display, d.isJotun)).join('')}
-        </div>
-      </div>
+    <div id="reactive-container">
+      ${renderReactiveSection()}
     </div>
 
     <div class="card">
-      <div class="card-header"><h2>EBITDA Growth YoY</h2></div>
+      <div class="card-header"><h2>EBITDA / Op. Profit Growth YoY</h2><span class="card-badge">Regular EBITDA, not adjusted</span></div>
       <div class="card-body">
         ${ebitdaGrowthData.map(d => {
           const color = d.value > 0 ? 'var(--green)' : 'var(--red)'
@@ -175,7 +222,7 @@ export function render() {
         <div class="insight-card threat">
           <span class="tag">THREAT</span>
           <h4>Nippon Paint M&A</h4>
-          <p>Revenue +8.3% via AOC acquisition. EBITDA +37.8%. APAC = 43% of global market. Jotun's decorative position under pressure.</p>
+          <p>Revenue +8.3% via AOC acquisition. Op. profit +31%. APAC = 43% of global market. Jotun's decorative position under pressure.</p>
         </div>
         <div class="insight-card strength">
           <span class="tag">STRENGTH</span>
@@ -205,33 +252,18 @@ export function render() {
 export function init() {
   window.__exportExcel = exportExcel
   window.__exportPDF = exportPDF
-
-  // Currency toggle
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currencyMode = btn.dataset.mode
-      const container = document.getElementById('table-container')
-      if (container) container.innerHTML = renderTable()
-      // Re-bind toggle buttons
-      document.querySelectorAll('.toggle-btn').forEach(b => {
-        b.addEventListener('click', () => {
-          currencyMode = b.dataset.mode
-          const c2 = document.getElementById('table-container')
-          if (c2) c2.innerHTML = renderTable()
-          initToggles()
-        })
-      })
-    })
-  })
+  bindToggles()
 }
 
-function initToggles() {
+function bindToggles() {
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       currencyMode = btn.dataset.mode
-      const container = document.getElementById('table-container')
-      if (container) container.innerHTML = renderTable()
-      initToggles()
+      const container = document.getElementById('reactive-container')
+      if (container) {
+        container.innerHTML = renderReactiveSection()
+        bindToggles()
+      }
     })
   })
 }
