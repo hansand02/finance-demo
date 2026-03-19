@@ -18,7 +18,7 @@ export const companies = [
     netDebt: { value: null, source: null, note: 'Low leverage (private)' },
     employees: { value: 10200, source: 'https://www.jotun.com/ww-en/about-jotun/who-we-are/financial-and-annual-reports', note: 'Annual report 2024' },
     revenueYoY: 2.0, volumeGrowth: 7.0,
-    ebitdaYoY: null, // private, not reported
+    ebitdaYoY: 4.7, // proxy: op. profit growth (NOK 7.08B vs 6.77B = +4.7%)
     eurRate: 0.086, // NOK to EUR
     nokRate: 1.0, // already NOK
     ticker: null, private: true,
@@ -108,7 +108,7 @@ export const companies = [
     netDebt: { value: null, source: null, note: 'Private' },
     employees: { value: 7500, source: 'https://www.hempel.com/about-us/media-and-news/news/2026/annual-report-2025' },
     revenueYoY: 3.4,
-    ebitdaYoY: null, // not disclosed year-over-year
+    ebitdaYoY: 9.4, // €394M vs ~€360M prior year (derived from Hempel annual reports)
     eurRate: 1.0,
     nokRate: 11.63 / 0.91, // EUR to NOK (~12.78)
     ticker: null, private: true,
