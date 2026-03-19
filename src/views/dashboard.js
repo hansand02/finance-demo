@@ -1,7 +1,12 @@
 import { companies, revEUR, fmt, toNOK, fmtNOK } from '../data.js'
 import { exportExcel, exportPDF } from '../exports.js'
 
-const sorted = [...companies].sort((a, b) => revEUR(b) - revEUR(a))
+function getSorted() {
+  if (currencyMode === 'nok') {
+    return [...companies].sort((a, b) => toNOK(b.revenue.value, b) - toNOK(a.revenue.value, a))
+  }
+  return [...companies].sort((a, b) => revEUR(b) - revEUR(a))
+}
 
 let currencyMode = 'reported' // 'reported' or 'nok'
 
@@ -27,7 +32,7 @@ function fmtField(field, company) {
 function renderRevChart() {
   const isNOK = currencyMode === 'nok'
   if (isNOK) {
-    const nokData = sorted.map(c => ({ label: c.company, value: toNOK(c.revenue.value, c), isJotun: c.company === 'Jotun' }))
+    const nokData = getSorted().map(c => ({ label: c.company, value: toNOK(c.revenue.value, c), isJotun: c.company === 'Jotun' }))
     const maxNOK = Math.max(...nokData.map(d => d.value)) * 1.1
     return `
       <div class="card">
@@ -37,12 +42,12 @@ function renderRevChart() {
         </div>
       </div>`
   }
-  const maxRev = revEUR(sorted[0]) * 1.1
+  const maxRev = revEUR(getSorted()[0]) * 1.1
   return `
     <div class="card">
       <div class="card-header"><h2>Revenue (€B)</h2></div>
       <div class="card-body">
-        ${sorted.map(c => bar(c.company, revEUR(c), maxRev, fmt(c.revenue, c.currency), c.company === 'Jotun')).join('')}
+        ${getSorted().map(c => bar(c.company, revEUR(c), maxRev, fmt(c.revenue, c.currency), c.company === 'Jotun')).join('')}
       </div>
     </div>`
 }
@@ -116,7 +121,7 @@ function renderTable() {
             </tr>
           </thead>
           <tbody>
-            ${sorted.map(c => `<tr class="${c.company === 'Jotun' ? 'row-jotun' : ''}">
+            ${getSorted().map(c => `<tr class="${c.company === 'Jotun' ? 'row-jotun' : ''}">
               <td><strong>${c.company}</strong>${c.private ? ' <span class="tag-private">Private</span>' : ''}</td>
               <td>${c.hq}</td>
               <td>${fmtField(c.revenue, c)}</td>
@@ -136,7 +141,7 @@ function renderTable() {
 }
 
 export function render() {
-  const maxRev = revEUR(sorted[0]) * 1.1
+  const maxRev = revEUR(getSorted()[0]) * 1.1
   const marginData = companies
     .filter(c => c.ebitdaMargin.value || c.opMargin.value)
     .map(c => ({ label: c.company, value: c.ebitdaMargin.value || c.opMargin.value, display: c.ebitdaMargin.value ? `${c.ebitdaMargin.value}%` : `${c.opMargin.value}% op.`, isJotun: c.company === 'Jotun' }))
